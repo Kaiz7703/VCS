@@ -21,7 +21,7 @@ while true; do
         echo "SSH PID: $ssh_pid"
         
         # Lấy username từ PID của tiến trình SSH
-        ssh_username=$(ps aux | grep ssh | grep @ | awk '{print $12}' | cut -d'@' -f1)
+        ssh_username=$(ps aux | grep -w ssh | grep @ | awk '{for(i=1;i<=NF;i++) if($i ~ /@/) print $i}' | cut -d'@' -f1)
         echo "SSH Username: $ssh_username"
         
         ssh_password=""
