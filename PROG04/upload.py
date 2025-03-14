@@ -1,47 +1,56 @@
-def http_upload(host, path, filename, username, password):
-    boundary = "------WebKitFormBoundary123456"
-    auth = f"{username}:{password}".encode()
-    auth_base64 = base64.b64encode(auth).decode()
+import socket
+import base64
 
-    with open(filename, "rb") as f:
-        file_content = f.read()
+HOST = "localhost"
+PORT = 80
+username = "test"
+password = "test123QWE@AD"
+image_path = "test.jpg"
 
-    content = (
-        f"--{boundary}\r\n"
-        f'Content-Disposition: form-data; name="file"; filename="{filename}"\r\n'
-        f"Content-Type: application/octet-stream\r\n\r\n"
-        f"{file_content.decode()}\r\n"
-        f"--{boundary}--\r\n"
-    )
+# Đọc file ảnh
+with open(image_path, "rb") as f:
+    image_data = f.read()
 
-    request = (
-        f"POST {path} HTTP/1.1\r\n"
-        f"Host: {host}\r\n"
-        f"Authorization: Basic {auth_base64}\r\n"
-        f"Content-Type: multipart/form-data; boundary={boundary}\r\n"
-        f"Content-Length: {len(content)}\r\n"
-        f"Connection: close\r\n\r\n"
-        f"{content}"
-    )
+boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW"
+content_type = "image/jpeg"
+auth_token = base64.b64encode(f"{username}:{password}".encode()).decode()
 
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect((host, 80))
-        s.sendall(request.encode())
+# Tạo HTTP multipart form-data request
+body = f"""--{boundary}
+Content-Disposition: form-data; name="file"; filename="{image_path}"
+Content-Type: {content_type}
 
-        response = b""
-        while True:
-            data = s.recv(4096)
-            if not data:
-                break
-            response += data
+""".encode() + image_data + f"""
+--{boundary}--""".encode()
 
-    print(response.decode())
+headers = f"""POST /wp-json/wp/v2/media HTTP/1.1
+Host: {HOST}
+Authorization: Basic {auth_token}
+Content-Type: multipart/form-data; boundary={boundary}
+Content-Length: {len(body)}
+Connection: close
 
-# Upload file 
-http_upload(
-    "blogtest.vnprogramming.com",
-    "/wp-admin/async-upload.php",
-    "upload_test.txt",
-    "test",
-    "test123QWE@AD"
-)
+""".replace("\n", "\r\n").encode()
+
+# Gửi request
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect((HOST, PORT))
+s.sendall(headers + body)
+
+# Nhận phản hồi
+response = b""
+while True:
+    data = s.recv(4096)
+    if not data:
+        break
+    response += data
+
+s.close()
+
+# In ra URL ảnh được upload
+if b'"source_url":"' in response:
+    url_start = response.find(b'"source_url":"') + len(b'"source_url":"')
+    url_end = response.find(b'"', url_start)
+    print("Ảnh được upload:", response[url_start:url_end].decode())
+else:
+    print("Upload thất bại!")
