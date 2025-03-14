@@ -1,25 +1,33 @@
-def http_download(host, path, filename):
-    request = f"GET {path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n"
+import socket
 
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect((host, 80))
-        s.sendall(request.encode())
+HOST = "localhost"
+PORT = 80
+image_url = "/wp-content/uploads/test.jpg"  # Đường dẫn ảnh trên WordPress
 
-        response = b""
-        while True:
-            data = s.recv(4096)
-            if not data:
-                break
-            response += data
+request = f"GET {image_url} HTTP/1.1\r\nHost: {HOST}\r\nConnection: close\r\n\r\n"
 
-    # Lấy phần dữ liệu từ HTTP response
-    content = response.split(b"\r\n\r\n", 1)[1]
+# Kết nối TCP
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect((HOST, PORT))
+s.sendall(request.encode())
 
-    # Ghi file
-    with open(filename, "wb") as f:
-        f.write(content)
-    
-    print(f"File {filename} đã được tải về.")
+# Nhận phản hồi
+response = b""
+while True:
+    data = s.recv(4096)
+    if not data:
+        break
+    response += data
 
-# Download ảnh hoặc tài liệu từ WordPress
-http_download("blogtest.vnprogramming.com", "/wp-content/uploads/sample.pdf", "sample.pdf")
+s.close()
+
+# Tách phần header và dữ liệu file ảnh
+header, _, body = response.partition(b"\r\n\r\n")
+
+# Lưu ảnh
+file_path = "downloaded.jpg"
+with open(file_path, "wb") as f:
+    f.write(body)
+
+print(f"Ảnh đã tải về: {file_path}")
+print(f"Kích thước file: {len(body)} bytes")
