@@ -37,7 +37,7 @@ def http_upload(host, path, filename, username, password):
 
     print(response.decode())
 
-# Upload file (nếu WordPress hỗ trợ)
+# Upload file 
 http_upload(
     "blogtest.vnprogramming.com",
     "/wp-admin/async-upload.php",
