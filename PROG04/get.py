@@ -1,8 +1,8 @@
 import socket
 import re
 
-HOST = "localhost"  # Thay đổi thành domain WordPress của bạn
-PORT = 80  # Nếu chạy qua HTTPS, đổi thành 443 và sử dụng TLS
+HOST = "localhost"  
+PORT = 80  
 
 request = f"GET / HTTP/1.1\r\nHost: {HOST}\r\nConnection: close\r\n\r\n"
 
@@ -30,4 +30,3 @@ if match:
     print("Title:", match.group(1))
 else:
     print("Không tìm thấy tiêu đề.")
-    
