@@ -1,21 +1,33 @@
 import socket
+import re
 
-def http_get(host, path="/"):
-    request = f"GET {path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n"
+HOST = "localhost"  # Thay đổi thành domain WordPress của bạn
+PORT = 80  # Nếu chạy qua HTTPS, đổi thành 443 và sử dụng TLS
 
-    # Tạo socket và kết nối đến server
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect((host, 80))
-        s.sendall(request.encode())
+request = f"GET / HTTP/1.1\r\nHost: {HOST}\r\nConnection: close\r\n\r\n"
 
-        response = b""
-        while True:
-            data = s.recv(4096)
-            if not data:
-                break
-            response += data
+# Kết nối TCP đến server
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect((HOST, PORT))
+s.sendall(request.encode())
 
-    print(response.decode())
+# Nhận dữ liệu từ server
+response = b""
+while True:
+    data = s.recv(4096)
+    if not data:
+        break
+    response += data
 
-# Gửi GET request
-http_get("blogtest.vnprogramming.com", "/")
+s.close()
+
+# Giải mã phản hồi HTTP
+html = response.decode(errors="ignore")
+
+# Trích xuất title bằng regex
+match = re.search(r"<title>(.*?)</title>", html, re.IGNORECASE)
+if match:
+    print("Title:", match.group(1))
+else:
+    print("Không tìm thấy tiêu đề.")
+    

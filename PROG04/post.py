@@ -1,38 +1,38 @@
-def http_post(host, path, data, username, password):
-    auth = f"{username}:{password}".encode()
-    auth_base64 = base64.b64encode(auth).decode()
-    
-    request_body = "&".join(f"{k}={v}" for k, v in data.items())
-    content_length = len(request_body)
+import socket
 
-    request = (
-        f"POST {path} HTTP/1.1\r\n"
-        f"Host: {host}\r\n"
-        f"Authorization: Basic {auth_base64}\r\n"
-        f"Content-Type: application/x-www-form-urlencoded\r\n"
-        f"Content-Length: {content_length}\r\n"
-        f"Connection: close\r\n\r\n"
-        f"{request_body}"
-    )
+HOST = "localhost"
+PORT = 80
 
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect((host, 80))
-        s.sendall(request.encode())
+username = "test"
+password = "test123QWE@AD"
 
-        response = b""
-        while True:
-            data = s.recv(4096)
-            if not data:
-                break
-            response += data
+post_data = f"log={username}&pwd={password}&wp-submit=Log+In"
 
-    print(response.decode())
+request = f"""POST /wp-login.php HTTP/1.1
+Host: {HOST}
+Content-Type: application/x-www-form-urlencoded
+Content-Length: {len(post_data)}
+Connection: close
 
-# Login test
-http_post(
-    "blogtest.vnprogramming.com",
-    "/wp-login.php",
-    {"log": "test", "pwd": "test123QWE@AD", "wp-submit": "Log In"},
-    "test",
-    "test123QWE@AD"
-)
+{post_data}"""
+
+# Kết nối TCP
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect((HOST, PORT))
+s.sendall(request.replace("\n", "\r\n").encode())
+
+# Nhận phản hồi
+response = b""
+while True:
+    data = s.recv(4096)
+    if not data:
+        break
+    response += data
+
+s.close()
+
+# Kiểm tra đăng nhập thành công hay thất bại
+if b"Location: /wp-admin" in response:
+    print("Đăng nhập thành công!")
+else:
+    print("Đăng nhập thất bại!")
