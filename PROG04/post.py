@@ -1,38 +1,41 @@
-import socket
+import requests
+import argparse
+from urllib.parse import urljoin
 
-HOST = "localhost"
-PORT = 80
+parser = argparse.ArgumentParser()
+parser.add_argument("--url", required=True, help="URL trang đăng nhập WordPress")
+parser.add_argument("--user", required=True, help="Tên đăng nhập")
+parser.add_argument("--password", required=True, help="Mật khẩu")
+args = parser.parse_args()
 
-username = "test"
-password = "test123QWE@AD"
+login_url = args.url
+base_url = "/".join(login_url.split("/")[:3])  # Lấy `http://localhost`
 
-post_data = f"log={username}&pwd={password}&wp-submit=Log+In"
+data = {
+    "log": args.user,
+    "pwd": args.password,
+    "wp-submit": "Log In",
+    "redirect_to": "/wp-admin/"
+}
 
-request = f"""POST /wp-login.php HTTP/1.1
-Host: {HOST}
-Content-Type: application/x-www-form-urlencoded
-Content-Length: {len(post_data)}
-Connection: close
+session = requests.Session()
+response = session.post(login_url, data=data, allow_redirects=False)
 
-{post_data}"""
+from urllib.parse import urljoin
 
-# Kết nối TCP
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect((HOST, PORT))
-s.sendall(request.replace("\n", "\r\n").encode())
+from urllib.parse import urljoin
 
-# Nhận phản hồi
-response = b""
-while True:
-    data = s.recv(4096)
-    if not data:
-        break
-    response += data
-
-s.close()
-
-# Kiểm tra đăng nhập thành công hay thất bại
-if b"Location: /wp-admin" in response:
-    print("Đăng nhập thành công!")
+if "Location" in response.headers:
+    redirect_url = response.headers["Location"]
+    
+    # Nếu redirect_url bị sai (chỉ có /wp-admin/)
+    if redirect_url == "/wp-admin/":
+        redirect_url = "http://localhost/wordpress/wp-admin/"
+    
+    # Hoặc tự động nối URL đúng
+    elif redirect_url.startswith("/"):
+        redirect_url = urljoin(login_url, redirect_url)
+    
+    print(f"🔄 Redirecting to: {redirect_url}")
 else:
-    print("Đăng nhập thất bại!")
+    print("❌ Không có redirect!")

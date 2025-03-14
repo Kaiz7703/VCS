@@ -1,56 +1,72 @@
 import socket
-import base64
+import re
+import argparse
+import os
+import mimetypes
 
-HOST = "localhost"
-PORT = 80
-username = "test"
-password = "test123QWE@AD"
-image_path = "test.jpg"
+def upload(url, username, password, file_path):
+    match = re.match(r'http://([^/:]+)(?::(\d+))?(/.*)?', url)
+    if not match:
+        return
+    
+    host, port, path = match.groups()
+    port = int(port) if port else 80
+    path = path if path else "/wp-admin/async-upload.php"
 
-# Đọc file ảnh
-with open(image_path, "rb") as f:
-    image_data = f.read()
+    if not os.path.exists(file_path):
+        print("File không tồn tại!")
+        return
 
-boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW"
-content_type = "image/jpeg"
-auth_token = base64.b64encode(f"{username}:{password}".encode()).decode()
+    file_name = os.path.basename(file_path)
+    file_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
 
-# Tạo HTTP multipart form-data request
-body = f"""--{boundary}
-Content-Disposition: form-data; name="file"; filename="{image_path}"
-Content-Type: {content_type}
+    # Đọc nội dung file ảnh
+    with open(file_path, "rb") as f:
+        file_data = f.read()
 
-""".encode() + image_data + f"""
---{boundary}--""".encode()
+    boundary = "----WebKitFormBoundary123456"
+    body = (
+        f"--{boundary}\r\n"
+        f'Content-Disposition: form-data; name="async-upload"; filename="{file_name}"\r\n'
+        f"Content-Type: {file_type}\r\n\r\n"
+    ).encode() + file_data + (
+        f"\r\n--{boundary}--\r\n"
+    ).encode()
 
-headers = f"""POST /wp-json/wp/v2/media HTTP/1.1
-Host: {HOST}
-Authorization: Basic {auth_token}
-Content-Type: multipart/form-data; boundary={boundary}
-Content-Length: {len(body)}
-Connection: close
+    request = (
+        f"POST {path} HTTP/1.1\r\n"
+        f"Host: {host}\r\n"
+        f"Content-Type: multipart/form-data; boundary={boundary}\r\n"
+        f"Content-Length: {len(body)}\r\n"
+        f"Connection: close\r\n\r\n"
+    ).encode() + body
 
-""".replace("\n", "\r\n").encode()
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((host, port))
+    s.sendall(request)
 
-# Gửi request
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect((HOST, PORT))
-s.sendall(headers + body)
+    response = b""
+    while True:
+        data = s.recv(4096)
+        if not data:
+            break
+        response += data
+    s.close()
 
-# Nhận phản hồi
-response = b""
-while True:
-    data = s.recv(4096)
-    if not data:
-        break
-    response += data
+    response_text = response.decode(errors="ignore")
 
-s.close()
+    match = re.search(r'"url":"(.*?)"', response_text)
+    if match:
+        print(f"Upload thành công. File URL: {match.group(1)}")
+    else:
+        print("Upload thất bại!")
 
-# In ra URL ảnh được upload
-if b'"source_url":"' in response:
-    url_start = response.find(b'"source_url":"') + len(b'"source_url":"')
-    url_end = response.find(b'"', url_start)
-    print("Ảnh được upload:", response[url_start:url_end].decode())
-else:
-    print("Upload thất bại!")
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--url", required=True, help="URL của trang WordPress")
+    parser.add_argument("--user", required=True, help="Tên đăng nhập")
+    parser.add_argument("--password", required=True, help="Mật khẩu")
+    parser.add_argument("--local-file", required=True, help="Đường dẫn file cần upload")
+    args = parser.parse_args()
+
+    upload(args.url, args.user, args.password, args.local_file)
