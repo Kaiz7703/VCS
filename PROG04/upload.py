@@ -1,128 +1,120 @@
-import socket, html, argparse  # Import các module cần thiết
+import socket
+import argparse
+import re
+import os
 
-# Tạo một đối tượng ArgumentParser để xử lý các đối số dòng lệnh
-parser = argparse.ArgumentParser()
-parser.add_argument("--url")  # Thêm đối số --url để chứa URL của trang web
-parser.add_argument("--user")  # Thêm đối số --user để chứa tên người dùng
-parser.add_argument("--password")  # Thêm đối số --password để chứa mật khẩu
-parser.add_argument("--localfile")  # Thêm đối số --localfile để chứa đường dẫn tệp cục bộ
-args = parser.parse_args()  # Phân tích các đối số dòng lệnh
+def get_response(s):
+    response = b""
+    while True:
+        chunk = s.recv(4096)
+        if not chunk:
+            break
+        response += chunk
+    return response.decode()
 
-# Tạo một socket TCP
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+# Thiết lập parser để lấy tham số từ dòng lệnh
+parser = argparse.ArgumentParser(description="Upload an image to WordPress Media Library")
+parser.add_argument("--url", required=True, help="WordPress URL (e.g., http://localhost/wordpress)")
+parser.add_argument("--user", required=True, help="WordPress username")
+parser.add_argument("--password", required=True, help="WordPress password")
+parser.add_argument("--local-file", required=True, help="Path to the image file")
 
-# Gán các giá trị từ đối số dòng lệnh vào các biến
-url = args.url
+args = parser.parse_args()
+
+# Lấy thông tin từ tham số dòng lệnh
+url = args.url.rstrip("/")  # Xóa dấu "/" cuối cùng nếu có
 user = args.user
 password = args.password
-filepath = args.localfile
+local_file = args.local_file
 
-# Tạo dữ liệu yêu cầu POST để đăng nhập
-request_body = "log=" + user + "&pwd=" + password + "&wp-submit=Log+In"
+# Kiểm tra file tồn tại
+if not os.path.isfile(local_file):
+    print("File không tồn tại!")
+    exit(1)
 
-# Khởi tạo biến get_url để chứa phần đầu URL (http:// hoặc https://)
-get_url = ""
-i = 8  # Khởi tạo i để xác định vị trí bắt đầu của phần đầu URL
-if url[0:7] == "http://":  # Kiểm tra xem URL có bắt đầu bằng http:// không
-    i = 7  # Nếu có, cập nhật i thành 7
-get_url += url[i:(len(url)-1)]  # Lấy phần đầu URL bằng cách cắt chuỗi
+filename = os.path.basename(local_file)
+filetype = filename.split(".")[-1]
 
-# Kết nối đến máy chủ web thông qua socket
-s.connect((get_url, 80))
+# Tách domain từ URL
+host = url.replace("http://", "").replace("https://", "").split("/")[0]
 
-# Tạo yêu cầu POST để đăng nhập và gửi nó đến máy chủ
-request = "POST /wp-login.php HTTP/1.1\r\nHost: " + get_url + "\r\n"
-request += "Content-Length: " + str(len(request_body)) + "\r\n"
-request += "Content-Type: application/x-www-form-urlencoded\r\n"
-request += "\r\n" + request_body
+# Bước 1: Đăng nhập để lấy cookie
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect((host, 80))
+login_data = f"log={user}&pwd={password}&wp-submit=Log+In"
+request = f"POST /wordpress/wp-login.php HTTP/1.1\r\nHost: {host}\r\n"
+request += f"Content-Length: {len(login_data)}\r\n"
+request += "Content-Type: application/x-www-form-urlencoded\r\n\r\n"
+request += login_data
 s.send(request.encode())
 
-# Nhận và đọc phản hồi từ máy chủ
-response = s.recv(2048)
+response = get_response(s)
 s.close()
 
-# Chuyển đổi phản hồi từ dạng byte sang chuỗi UTF-8
-response = response.decode("utf8")
+# Kiểm tra xem đăng nhập thành công không
+if "Set-Cookie" not in response:
+    print("Đăng nhập thất bại!")
+    exit(1)
 
-# Kiểm tra xem đăng nhập có thành công hay không
-if "HTTP/1.1 302 Found" not in response and "login_error" in response:
-    print("Upload failed")
-    exit(0)
+# Lấy cookie
+cookies = "; ".join(re.findall(r"Set-Cookie: ([^;]+);", response))
 
-# Lấy cookie từ phản hồi
-cookie = ""
-for i in response.split("\r\n"):
-    if "Set-Cookie:" in i:
-        cookie += " " + i.split(" ")[1]
-
-# Tạo yêu cầu GET để tải trang media mới và gửi nó đến máy chủ
-request_cookie = "GET /wp-admin/media-new.php HTTP/1.1\r\nHost: " + get_url + "\r\n" + "Cookie:" + cookie + "\r\n\r\n"
+# Bước 2: Lấy `_wpnonce` từ trang `media-new.php`
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect((get_url, 80))
-s.send(request_cookie.encode())
+s.connect((host, 80))
+request = f"GET /wordpress/wp-admin/media-new.php HTTP/1.1\r\nHost: {host}\r\nCookie: {cookies}\r\n\r\n"
+s.send(request.encode())
 
-# Nhận phản hồi và đọc nó từ máy chủ
-response_cookie =  b''
-while True:
-    respons = s.recv(2048)
-    if not respons:
-        break
-    response_cookie += respons
+response = get_response(s)
 s.close()
 
-# Chuyển đổi phản hồi từ dạng byte sang chuỗi UTF-8
-response_cookie = response_cookie.decode("utf8")
+match = re.search(r'id="_wpnonce" name="_wpnonce" value="([a-zA-Z0-9]+)"', response)
+if not match:
+    print("Không tìm thấy _wpnonce!")
+    exit(1)
 
-# Tìm nonce trong phản hồi để sử dụng cho việc tải tệp
-response_cookie_index = response_cookie.find("\"_wpnonce\":\"")
-res = response_cookie[response_cookie_index+ 12:response_cookie_index + 22]
+_wpnonce = match.group(1)
 
-# Lấy tên tệp, loại tệp và nội dung tệp
-filename = filepath.split("/")[-1]
-filetype = filename.split(".")[-1]
-file_img = open(filepath, 'rb').read()   
+# Bước 3: Upload file
+boundary = "----WebKitFormBoundary123456"
+with open(local_file, "rb") as f:
+    file_content = f.read()
 
-# Tạo yêu cầu POST để tải tệp và gửi nó đến máy chủ
-request_file = "------WebKitFormBoundary"+"\r\n" + \
-    "Content-Disposition: form-data; name=\"name\"" + "\r\n\r\n"+filename+"\r\n"+"------WebKitFormBoundary"+"\r\n" + \
-    "Content-Disposition: form-data; name=\"action\"" + "\r\n\r\n" + "upload-attachment"+"\r\n" + "------WebKitFormBoundary" + "\r\n" + \
-    "Content-Disposition: form-data; name=\"_wpnonce\""+"\r\n\r\n"+res+"\r\n"+"------WebKitFormBoundary" + "\r\n" + \
-    "Content-Disposition: form-data; name=\"async-upload\"; filename=\"" + filename + "\""+"\r\n" + \
-    "Content-Type: image/"+filetype+"\r\n\r\n"
-request_file = request_file.encode() + file_img + b"\r\n" + b"------WebKitFormBoundary--\r\n"
-request = "POST /wp-admin/async-upload.php HTTP/1.1\r\n"+"Host: " + get_url + "\r\n" 
-request += 'Cookie:' + cookie + '\r\n'
-request += "Content-Length: " + str(len(request_file)) + "\r\n"
-request += "Content-Type: multipart/form-data; boundary=----WebKitFormBoundary\r\n"
-request += 'Connection: close\r\n'
-request = request.encode() + request_file   
+upload_data = (
+    f"--{boundary}\r\n"
+    f'Content-Disposition: form-data; name="name"\r\n\r\n{filename}\r\n'
+    f"--{boundary}\r\n"
+    f'Content-Disposition: form-data; name="action"\r\n\r\nupload-attachment\r\n'
+    f"--{boundary}\r\n"
+    f'Content-Disposition: form-data; name="_wpnonce"\r\n\r\n{_wpnonce}\r\n'
+    f"--{boundary}\r\n"
+    f'Content-Disposition: form-data; name="async-upload"; filename="{filename}"\r\n'
+    f"Content-Type: image/{filetype}\r\n\r\n"
+).encode() + file_content + f"\r\n--{boundary}--\r\n".encode()
+
+request = (
+    f"POST /wordpress/wp-admin/async-upload.php HTTP/1.1\r\n"
+    f"Host: {host}\r\n"
+    f"Cookie: {cookies}\r\n"
+    f"Content-Length: {len(upload_data)}\r\n"
+    f"Content-Type: multipart/form-data; boundary={boundary}\r\n"
+    f"Connection: close\r\n\r\n"
+).encode() + upload_data
+
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect((get_url, 80))
+s.connect((host, 80))
 s.send(request)
 
-# Nhận phản hồi và đọc nó từ máy chủ
-response_upfile =  b''
-while True:
-    respon = s.recv(2048)
-    if not respon:
-        break
-    response_upfile += respon
+response = get_response(s)
 s.close()
 
-# Chuyển đổi phản hồi từ dạng byte sang chuỗi
-response_upfile = response_upfile.decode()
-
-# Kiểm tra xem tệp đã được tải thành công hay không
-if "HTTP/1.1 200 OK" in response_upfile:
-    print("Upload success\r\nFile upload url: ")
-    response_upfile_start = response_upfile.find("\"url\":\"") 
-    url_upload = ""
-    for j in range(response_upfile_start + 7, len(response_upfile)):
-        if(response_upfile[j] == "\""):
-            break
-        url_upload += response_upfile[j]
-        url_upload.replace("\\", "")
-    print(url_upload)
+# Kiểm tra kết quả upload
+if '"success":true' in response:
+    match = re.search(r'"url":"(http[^"]+)"', response)
+    if match:
+        upload_url = match.group(1).replace("\\/", "/")
+        print(f"Upload thành công. URL đến file: {upload_url}")
+    else:
+        print("Upload thành công nhưng không thấy URL.")
 else:
-    print("Upload failed")
-    exit(0)
+    print("Upload thất bại.")
