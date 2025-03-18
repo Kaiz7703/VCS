@@ -1,13 +1,20 @@
 <?php
-$host = "localhost";  // Hoặc địa chỉ IP của MySQL server
-$user = "root";       // Thay bằng username của MySQL
-$password = "";       // Thay bằng password của MySQL
-$database = "class_management"; // Tên database
+class Database {
+    private $host = "localhost";
+    private $db_name = "student_management"; // Updated database name
+    private $username = "studentapp"; // Updated username
+    private $password = "kaizweb"; // Updated password
+    public $conn;
 
-$conn = new mysqli($host, $user, $password, $database);
-
-// Kiểm tra kết nối
-if ($conn->connect_error) {
-    die("Kết nối thất bại: " . $conn->connect_error);
+    public function getConnection() {
+        $this->conn = null;
+        try {
+            $this->conn = new PDO("mysql:host=" . $this->host . ";dbname=" . $this->db_name, $this->username, $this->password);
+            $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        } catch(PDOException $e) {
+            echo "Connection error: " . $e->getMessage();
+        }
+        return $this->conn;
+    }
 }
 ?>
