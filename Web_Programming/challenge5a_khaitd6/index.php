@@ -10,13 +10,13 @@ require_once 'includes/header.php';
         <div class="dashboard">
             <h3>Quick Links</h3>
             <div class="quick-links">
-                <a href="/users/list.php" class="btn">Users List</a>
-                <a href="/assignments/index.php" class="btn">Assignments</a>
-                <a href="/challenges/index.php" class="btn">Challenges</a>
-                <a href="/users/profile.php" class="btn">My Profile</a>
+                <a href="users/list.php" class="btn">Users List</a>
+                <a href="assignments/index.php" class="btn">Assignments</a>
+                <a href="challenges/index.php" class="btn">Challenges</a>
+                <a href="users/profile.php" class="btn">My Profile</a>
             </div>
         </div>
     <?php else: ?>
-        <p>Please <a href="/auth/login.php">login</a> or <a href="/auth/register.php">register</a> to continue.</p>
+        <p>Please <a href="/challenge5a_khaitd6/auth/login.php">login123</a> or <a href="auth/register.php">register</a> to continue.</p>
     <?php endif; ?>
 </div>
