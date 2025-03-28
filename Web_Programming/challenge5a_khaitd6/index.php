@@ -1,22 +1,36 @@
 <?php
-require_once 'config/database.php';
-require_once 'includes/header.php';
+session_start();
+include('includes/dbconnection.php');
 ?>
-
-<div class="container">
-    <h2>Welcome to Student Management System</h2>
-    
-    <?php if (isset($_SESSION['user_id'])): ?>
-        <div class="dashboard">
-            <h3>Quick Links</h3>
-            <div class="quick-links">
-                <a href="users/list.php" class="btn">Users List</a>
-                <a href="assignments/index.php" class="btn">Assignments</a>
-                <a href="challenges/index.php" class="btn">Challenges</a>
-                <a href="users/profile.php" class="btn">My Profile</a>
-            </div>
-        </div>
-    <?php else: ?>
-        <p>Please <a href="/challenge5a_khaitd6/auth/login.php">login123</a> or <a href="auth/register.php">register</a> to continue.</p>
-    <?php endif; ?>
-</div>
+<!doctype html>
+<html>
+  <head>
+    <title>He thong quan ly sinh vien</title>
+    <script type="application/x-javascript"> addEventListener("load", function() { setTimeout(hideURLbar, 0); }, false); function hideURLbar(){ window.scrollTo(0,1); } </script>
+    <link href="css/bootstrap.css" rel="stylesheet" type="text/css" media="all">
+    <link href="css/style.css" rel="stylesheet" type="text/css"/>
+    <script src="js/jquery-1.11.0.min.js"></script>
+    <script src="js/bootstrap.js"></script>
+    <link href='//fonts.googleapis.com/css?family=Open+Sans:300,300italic,400italic,400,600,600italic,700,700italic,800,800italic' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="css/default.css" />
+    <link rel="stylesheet" type="text/css" href="css/component.css" />
+    <script src="js/modernizr.custom.js"></script>
+    <script type="text/javascript" src="js/move-top.js"></script>
+    <script type="text/javascript" src="js/easing.js"></script>
+    <!--script-->
+    <script type="text/javascript">
+			jQuery(document).ready(function($) {
+				$(".scroll").click(function(event){		
+					event.preventDefault();
+					$('html,body').animate({scrollTop:$(this.hash).offset().top},900);
+				});
+			});
+    </script>
+    <!--script-->
+  </head>
+  <body>
+    <?php include_once('includes/header.php'); ?>
+    <div class="banner">
+    </div>
+  </body>
+</html>
