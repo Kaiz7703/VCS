@@ -13,7 +13,7 @@ def get_response(s):
     return response.decode()
 
 # Thiết lập parser để lấy tham số từ dòng lệnh
-parser = argparse.ArgumentParser(description="Upload an image to WordPress Media Library")
+parser = argparse.ArgumentParser()
 parser.add_argument("--url", required=True, help="WordPress URL (e.g., http://localhost/wordpress)")
 parser.add_argument("--user", required=True, help="WordPress username")
 parser.add_argument("--password", required=True, help="WordPress password")
