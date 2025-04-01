@@ -11,7 +11,7 @@ args = parser.parse_args()
 
 # URL đăng nhập và URL gốc
 login_url = args.url
-base_url = "/".join(login_url.split("/")[:3])  # Lấy `http://localhost`
+base_url = "/".join(login_url.split("/")[:3])  
 
 # Dữ liệu đăng nhập
 data = {
