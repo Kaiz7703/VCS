@@ -38,7 +38,7 @@ filetype = filename.split(".")[-1]
 # Tách domain từ URL
 host = url.replace("http://", "").replace("https://", "").split("/")[0]
 
-# Bước 1: Đăng nhập để lấy cookie
+# Đăng nhập để lấy cookie
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((host, 80))
 login_data = f"log={user}&pwd={password}&wp-submit=Log+In"
@@ -59,7 +59,7 @@ if "Set-Cookie" not in response:
 # Lấy cookie
 cookies = "; ".join(re.findall(r"Set-Cookie: ([^;]+);", response))
 
-# Bước 2: Lấy `_wpnonce` từ trang `media-new.php`
+# Lấy `_wpnonce` từ trang `media-new.php`
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((host, 80))
 request = f"GET /wordpress/wp-admin/media-new.php HTTP/1.1\r\nHost: {host}\r\nCookie: {cookies}\r\n\r\n"
@@ -75,7 +75,7 @@ if not match:
 
 _wpnonce = match.group(1)
 
-# Bước 3: Upload file
+# Upload file
 boundary = "----WebKitFormBoundary123456"
 with open(local_file, "rb") as f:
     file_content = f.read()
