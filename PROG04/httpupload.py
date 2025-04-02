@@ -14,7 +14,7 @@ def get_response(s):
 
 # Thiết lập parser để lấy tham số từ dòng lệnh
 parser = argparse.ArgumentParser()
-parser.add_argument("--url", required=True, help="WordPress URL (e.g., http://localhost/wordpress)")
+parser.add_argument("--url", required=True, help="WordPress URL")
 parser.add_argument("--user", required=True, help="WordPress username")
 parser.add_argument("--password", required=True, help="WordPress password")
 parser.add_argument("--local-file", required=True, help="Path to the image file")
